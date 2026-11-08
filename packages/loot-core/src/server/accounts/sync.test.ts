@@ -253,6 +253,52 @@ describe('Account sync', () => {
     );
   });
 
+  test.each(['', 'My edited note'])(
+    'reconcile preserves an edited note (%j) on subsequent imports',
+    async notes => {
+      const { id } = await prepareDatabase();
+      const importedTransaction = {
+        date: '2024-04-05',
+        amount: -899,
+        payee_name: 'Netflix',
+        imported_id: 'bank-transaction',
+        notes: 'Bank note',
+      };
+      await reconcileTransactions(id, [importedTransaction]);
+      const [transaction] = await getAllTransactions();
+      expect(transaction.notes).toBe('Bank note');
+
+      await db.updateTransaction({ id: transaction.id, notes });
+      await reconcileTransactions(id, [importedTransaction]);
+
+      expect(await getAllTransactions()).toEqual([
+        expect.objectContaining({ id: transaction.id, notes }),
+      ]);
+    },
+  );
+
+  test('reconcile imports a note when the existing note is null', async () => {
+    const { id } = await prepareDatabase();
+    const importedTransaction = {
+      date: '2024-04-05',
+      amount: -899,
+      payee_name: 'Netflix',
+      imported_id: 'bank-transaction',
+      notes: null,
+    };
+    await reconcileTransactions(id, [importedTransaction]);
+    const [transaction] = await getAllTransactions();
+    expect(transaction.notes).toBeNull();
+
+    await reconcileTransactions(id, [
+      { ...importedTransaction, notes: 'Bank note' },
+    ]);
+
+    expect(await getAllTransactions()).toEqual([
+      expect.objectContaining({ id: transaction.id, notes: 'Bank note' }),
+    ]);
+  });
+
   test('reconcile doesnt rematch deleted transactions if reimport disabled', async () => {
     const { id: acctId } = await prepareDatabase();
     const reimportKey =

@@ -1056,7 +1056,6 @@ describe('API CRUD operations', () => {
         date: '2023-11-03',
         imported_id: '12',
         amount: 100,
-        notes: '',
       },
     ];
 
